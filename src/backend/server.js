@@ -17,9 +17,10 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Middleware
+// Allow local dev plus the hosted frontend by default; can be overridden via env
 const allowedOrigins = (
 	process.env.ALLOWED_ORIGINS ||
-	"http://localhost:3000"
+	"http://localhost:3000,https://event-site-x3qm.onrender.com"
 )
 	.split(",")
 	.map((o) => o.trim());

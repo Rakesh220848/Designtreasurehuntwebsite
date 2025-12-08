@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from "react";
 import "./Check.css";
 
-const API_BASE = process.env.REACT_APP_API_BASE_URL || "http://localhost:5050";
+const API_BASE =
+	process.env.REACT_APP_API_BASE_URL ||
+	"https://backend-service-9to0.onrender.com";
 
 const Check = () => {
 	const [data, setData] = useState([]);
