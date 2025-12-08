@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
 import "./Check.css";
 
-const API_BASE =
+const API_BASE = (
 	process.env.REACT_APP_API_BASE_URL ||
-	"https://backend-service-9to0.onrender.com";
+	"https://backend-service-9to0.onrender.com"
+).replace(/\/+$/, "");
 
 const Check = () => {
 	const [data, setData] = useState([]);

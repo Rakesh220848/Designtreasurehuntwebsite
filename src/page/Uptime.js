@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
 
 const API_BASE =
-	process.env.REACT_APP_API_BASE_URL ||
-	"https://backend-service-9to0.onrender.com";
+	(
+		process.env.REACT_APP_API_BASE_URL ||
+		"https://backend-service-9to0.onrender.com"
+	).replace(/\/+$/, "");
 
 const Uptime = () => {
 	const [status, setStatus] = useState("checking...");
