@@ -235,7 +235,44 @@ app.post("/check", async (req, res) => {
 	}
 });
 
-// New route to save locations to setlocation table
+// Cache for locations to avoid fetching every time
+let locationsCache = null;
+let locationsCacheTime = 0;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+// Helper function to get locations (with caching)
+async function getLocations() {
+	const now = Date.now();
+	if (locationsCache && (now - locationsCacheTime) < CACHE_DURATION) {
+		return locationsCache;
+	}
+
+	const { data, error } = await supabase
+		.from("location")
+		.select("location_code")
+		.neq("location_code", "CLG");
+
+	if (error || !data) {
+		throw new Error("Failed to fetch locations");
+	}
+
+	locationsCache = data.map((loc) => loc.location_code);
+	locationsCacheTime = now;
+	return locationsCache;
+}
+
+// Helper function to generate unique Team_ID
+function generateTeamId() {
+	const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+	let teamId = "";
+	for (let i = 0; i < 8; i++) {
+		teamId += chars.charAt(Math.floor(Math.random() * chars.length));
+	}
+	// Add timestamp component for uniqueness
+	return teamId + Date.now().toString(36).toUpperCase().slice(-4);
+}
+
+// Optimized route to save locations to setlocation table
 app.post("/save-locations", async (req, res) => {
 	const { team, members } = req.body;
 
@@ -244,28 +281,27 @@ app.post("/save-locations", async (req, res) => {
 	}
 
 	try {
-		// Step 1: Fetch all distinct locations except "CLG"
-		const { data, error } = await supabase
-			.from("location")
-			.select("location_code")
-			.neq("location_code", "CLG");
+		// Step 1: Get locations (cached) and generate Team_ID in parallel
+		const [availableLocations, teamId] = await Promise.all([
+			getLocations(),
+			Promise.resolve(generateTeamId()),
+		]);
 
-		console.log("Fetched data:", data);
-		console.error("Error details:", error);
+		// Step 2: Shuffle and pick 5 unique locations (optimized shuffle)
+		const shuffled = [...availableLocations];
+		for (let i = shuffled.length - 1; i > 0; i--) {
+			const j = Math.floor(Math.random() * (i + 1));
+			[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+		}
+		const uniqueLocations = shuffled.slice(0, 5);
 
-		// Step 2: Shuffle and pick 5 unique locations
-		const uniqueLocations = [...data]
-			.map((loc) => loc.location_code) // Extract location codes
-			.sort(() => 0.5 - Math.random()) // Shuffle the array
-			.slice(0, 5); // Pick the first 5 unique values
-
-		if (new Set(uniqueLocations).size !== 5) {
+		if (uniqueLocations.length !== 5) {
 			return res
 				.status(500)
 				.json({ error: "Failed to generate unique locations" });
 		}
 
-		// Step 3: Structure the data for insertion
+		// Step 3: Structure all data for parallel insertion
 		const locationData = {
 			team: team,
 			start: "CLG",
@@ -277,50 +313,15 @@ app.post("/save-locations", async (req, res) => {
 			end: "CLG",
 		};
 
-		// Step 4: Insert team into `team_no` table
 		const teamData = {
 			team: team,
+			team_id: teamId, // Include team_id in initial insert
 			member1: members[0] || null,
 			member2: members[1] || null,
 			member3: members[2] || null,
 			member4: members[3] || null,
 		};
 
-		const { error: teamError } = await supabase
-			.from("team_no")
-			.insert([teamData]);
-
-		if (teamError) {
-			console.error("Error adding team:", teamError.message);
-			return res.status(500).json({ error: "Failed to add team" });
-		}
-
-		// Step 5: Insert into `setlocation` table
-		const { error: locationError } = await supabase
-			.from("setlocation")
-			.insert([locationData]);
-
-		if (locationError) {
-			console.error("Error saving locations:", locationError.message);
-			return res.status(500).json({ error: "Failed to save locations" });
-		}
-
-		// Step 6: Generate unique Team_ID
-		const generateTeamId = () => {
-			const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-			let teamId = "";
-			for (let i = 0; i < 8; i++) {
-				teamId += chars.charAt(Math.floor(Math.random() * chars.length));
-			}
-			return teamId;
-		};
-
-		let teamId = generateTeamId();
-		// Ensure Team_ID is unique (simple check - in production, verify against DB)
-		// For now, we'll use a timestamp component to ensure uniqueness
-		teamId = teamId + Date.now().toString(36).toUpperCase().slice(-4);
-
-		// Step 7: Create initial entry in `verifylocation` table
 		const verifyData = {
 			team: team,
 			team_id: teamId,
@@ -334,27 +335,32 @@ app.post("/save-locations", async (req, res) => {
 			restricted: false,
 		};
 
-		const { error: verifyError } = await supabase
-			.from("verifylocation")
-			.insert([verifyData]);
+		// Step 4: Execute all inserts in parallel for maximum speed
+		const [teamResult, locationResult, verifyResult] = await Promise.all([
+			supabase.from("team_no").insert([teamData]),
+			supabase.from("setlocation").insert([locationData]),
+			supabase.from("verifylocation").insert([verifyData]),
+		]);
 
-		if (verifyError) {
-			console.error("Error initializing verification:", verifyError.message);
+		// Check for errors
+		if (teamResult.error) {
+			console.error("Error adding team:", teamResult.error.message);
+			return res.status(500).json({ error: "Failed to add team" });
+		}
+
+		if (locationResult.error) {
+			console.error("Error saving locations:", locationResult.error.message);
+			return res.status(500).json({ error: "Failed to save locations" });
+		}
+
+		if (verifyResult.error) {
+			console.error("Error initializing verification:", verifyResult.error.message);
 			return res
 				.status(500)
 				.json({ error: "Failed to initialize verification" });
 		}
 
-		// Update team_no table with team_id
-		const { error: updateTeamError } = await supabase
-			.from("team_no")
-			.update({ team_id: teamId })
-			.eq("team", team);
-
-		if (updateTeamError) {
-			console.error("Error updating team_id:", updateTeamError.message);
-		}
-
+		// Return success response immediately
 		res.status(200).json({
 			message: "Locations assigned successfully",
 			teamId: teamId,
