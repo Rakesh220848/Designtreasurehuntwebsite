@@ -6,8 +6,8 @@
   --mv-secondary: #ff006e;
   --mv-accent: #8b5cf6;
   --mv-text: #ffffff;
-  --mv-glass: rgba(255, 255, 255, 0.08);
-  --mv-glass-border: rgba(0, 217, 255, 0.3);
+  --mv-glass: rgba(0, 0, 0, 0.6);
+  --mv-glass-border: rgba(0, 217, 255, 0.5);
   --mv-shadow-primary: 0 0 20px rgba(0, 217, 255, 0.6);
   --mv-shadow-secondary: 0 0 20px rgba(255, 0, 110, 0.6);
   --font-heading: 'Audiowide', sans-serif;
@@ -19,8 +19,8 @@ body {
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: var(--mv-bg-dark);
-  background-image: url('./mirrorverse_bg.png');
+  background-color: #000000;
+  background-image: url('./phoenix-bg.png');
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
@@ -28,6 +28,19 @@ body {
   color: var(--mv-text);
   min-height: 100vh;
   font-weight: 400;
+  position: relative;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: -1;
+  pointer-events: none;
 }
 
 #root {

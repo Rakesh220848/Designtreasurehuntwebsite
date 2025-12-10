@@ -6,6 +6,8 @@ import Scan from "./page/Scan"; // Import the Scan component
 // import Scanner from "./page/Scanner"; // Import the Scanner component
 import Check from "./page/Check"
 import Admin from "./page/Admin";
+import TeamConfirmation from "./page/TeamConfirmation";
+import SuperAdmin from "./page/SuperAdmin";
 import Uptime from "./page/Uptime";
 import reportWebVitals from "./reportWebVitals";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom"; // Import routing components
@@ -18,7 +20,9 @@ root.render(
 				<Route path="/" element={<App />} /> {/* Route for App */}
 				<Route path="/scan" element={<Scan />} /> {/* Route for Main */}
 				{/* <Route path="/scanner" element={<Scanner />} /> */}
-				<Route path="/regi" element={<Admin />} />
+				<Route path="/register" element={<Admin />} />
+				<Route path="/team-confirmation" element={<TeamConfirmation />} />
+				<Route path="/admin" element={<SuperAdmin />} />
 				<Route path="/check" element={<Check />} />
 				<Route path="/uptime" element={<Uptime />} />
 			</Routes>

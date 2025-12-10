@@ -105,12 +105,14 @@ const Scan = () => {
 					</button>
 				)}
 				<br />
-				<label>Team Number:</label>
+				<label>Team ID:</label>
 				<input
 					type="text"
 					value={teamNumber}
-					onChange={(e) => setTeamNumber(e.target.value)}
+					onChange={(e) => setTeamNumber(e.target.value.toUpperCase())}
+					placeholder="Enter your Team ID"
 					required
+					style={{ textTransform: "uppercase", letterSpacing: "2px", fontFamily: "'Courier New', monospace" }}
 				/>
 			<br />
 			<label>Member Name (locked to this device):</label>

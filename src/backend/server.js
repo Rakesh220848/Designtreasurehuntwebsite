@@ -42,6 +42,12 @@ app.use(bodyParser.json());
 app.post("/check", async (req, res) => {
 	const { qrData, teamNumber, deviceId, memberName } = req.body;
 
+	// Normalize strings to reduce false negatives from casing/whitespace
+	const normalize = (val) =>
+		(val === null || val === undefined ? "" : String(val))
+			.trim()
+			.toUpperCase();
+
 	if (!deviceId) {
 		return res
 			.status(400)
@@ -66,13 +72,20 @@ app.post("/check", async (req, res) => {
 		const { data: verifylocationData, error: verifyError } = await supabase
 			.from("verifylocation")
 			.select(
-				"start, location1, location2, location3, location4, location5, end, locked_device, locked_member, start_time, location1_time, location2_time, location3_time, location4_time, location5_time"
+				"start, location1, location2, location3, location4, location5, end, locked_device, locked_member, start_time, location1_time, location2_time, location3_time, location4_time, location5_time, restricted"
 			)
 			.eq("team", teamNumber)
 			.single();
 
 		if (verifyError || !verifylocationData) {
 			return res.status(500).json({ message: "Unexpected error occurred" });
+		}
+
+		// Step 2.5: Check if team is restricted
+		if (verifylocationData.restricted) {
+			return res.status(403).json({
+				message: "This team has been disqualified and cannot scan QR codes.",
+			});
 		}
 
 		// Step 3: Enforce single-device lock per team
@@ -100,7 +113,7 @@ app.post("/check", async (req, res) => {
 
 		// Step 4: Check if the start location is verified
 		if (!verifylocationData.start) {
-			if (qrData === setlocationData.start) {
+			if (normalize(qrData) === normalize(setlocationData.start)) {
 				// Fetch hint for the first location
 				const { data: locationHintData, error: hintError } = await supabase
 					.from("location")
@@ -173,7 +186,7 @@ app.post("/check", async (req, res) => {
 		}
 
 		// Step 4.1: Compare QR data with the current location field
-		if (qrData === setlocationData[locationField]) {
+		if (normalize(qrData) === normalize(setlocationData[locationField])) {
 			// Convert current time to IST
 			const currentTimeIST = new Date(
 				new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
@@ -292,9 +305,25 @@ app.post("/save-locations", async (req, res) => {
 			return res.status(500).json({ error: "Failed to save locations" });
 		}
 
-		// Step 6: Create initial entry in `verifylocation` table
+		// Step 6: Generate unique Team_ID
+		const generateTeamId = () => {
+			const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+			let teamId = "";
+			for (let i = 0; i < 8; i++) {
+				teamId += chars.charAt(Math.floor(Math.random() * chars.length));
+			}
+			return teamId;
+		};
+
+		let teamId = generateTeamId();
+		// Ensure Team_ID is unique (simple check - in production, verify against DB)
+		// For now, we'll use a timestamp component to ensure uniqueness
+		teamId = teamId + Date.now().toString(36).toUpperCase().slice(-4);
+
+		// Step 7: Create initial entry in `verifylocation` table
 		const verifyData = {
 			team: team,
+			team_id: teamId,
 			start: "CLG",
 			location1: null,
 			location2: null,
@@ -302,6 +331,7 @@ app.post("/save-locations", async (req, res) => {
 			location4: null,
 			location5: null,
 			end: null,
+			restricted: false,
 		};
 
 		const { error: verifyError } = await supabase
@@ -315,8 +345,19 @@ app.post("/save-locations", async (req, res) => {
 				.json({ error: "Failed to initialize verification" });
 		}
 
+		// Update team_no table with team_id
+		const { error: updateTeamError } = await supabase
+			.from("team_no")
+			.update({ team_id: teamId })
+			.eq("team", team);
+
+		if (updateTeamError) {
+			console.error("Error updating team_id:", updateTeamError.message);
+		}
+
 		res.status(200).json({
 			message: "Locations assigned successfully",
+			teamId: teamId,
 			locations: locationData,
 		});
 	} catch (error) {
@@ -359,7 +400,7 @@ app.get("/api/leaderboard", async (req, res) => {
 		const { data, error } = await supabase
 			.from("verifylocation")
 			.select(
-				"team, start, location1, location2, location3, location4, location5, end, start_time, location1_time, location2_time, location3_time, location4_time, location5_time"
+				"team, team_id, start, location1, location2, location3, location4, location5, end, start_time, location1_time, location2_time, location3_time, location4_time, location5_time, restricted"
 			);
 
 		if (error) {
@@ -391,8 +432,10 @@ app.get("/api/leaderboard", async (req, res) => {
 		};
 
 		const leaderboard = data
+			.filter((row) => !row.restricted) // Filter out restricted teams
 			.map((row) => ({
 				team: row.team,
+				teamId: row.team_id,
 				progress: computeProgress(row),
 				lastTime: computeLastTime(row),
 				status: row.location5 ? "Finished" : "In Progress",
@@ -405,6 +448,62 @@ app.get("/api/leaderboard", async (req, res) => {
 			});
 
 		return res.json({ leaderboard });
+	} catch (err) {
+		return res.status(500).json({ message: err.message });
+	}
+});
+
+// Get all teams for SuperAdmin
+app.get("/api/all-teams", async (req, res) => {
+	try {
+		const { data, error } = await supabase
+			.from("verifylocation")
+			.select("team, team_id, restricted");
+
+		if (error) {
+			return res.status(500).json({ message: error.message });
+		}
+
+		return res.json({ teams: data || [] });
+	} catch (err) {
+		return res.status(500).json({ message: err.message });
+	}
+});
+
+// Restrict/Unrestrict team
+app.post("/api/restrict-team", async (req, res) => {
+	const { teamId, restricted } = req.body;
+
+	if (!teamId) {
+		return res.status(400).json({ message: "Team ID is required" });
+	}
+
+	try {
+		// Find team by team_id or team name
+		const { data: teamData, error: findError } = await supabase
+			.from("verifylocation")
+			.select("team, team_id")
+			.or(`team_id.eq.${teamId},team.eq.${teamId}`)
+			.limit(1)
+			.single();
+
+		if (findError || !teamData) {
+			return res.status(404).json({ message: "Team not found" });
+		}
+
+		const { error: updateError } = await supabase
+			.from("verifylocation")
+			.update({ restricted: restricted === true })
+			.eq("team", teamData.team);
+
+		if (updateError) {
+			return res.status(500).json({ message: updateError.message });
+		}
+
+		return res.json({
+			message: `Team ${restricted ? "restricted" : "unrestricted"} successfully`,
+			teamId: teamData.team_id || teamData.team,
+		});
 	} catch (err) {
 		return res.status(500).json({ message: err.message });
 	}

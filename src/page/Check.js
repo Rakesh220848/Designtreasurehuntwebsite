@@ -84,35 +84,77 @@ const Check = () => {
 		};
 	}, []);
 
+	const leadingTeam = leaderboard.length > 0 ? leaderboard[0] : null;
+	const maxProgress = leadingTeam ? leadingTeam.progress : 0;
+
 	return (
 		<div className="check-page">
 			<h1>Location Visited with Time</h1>
 			<button onClick={pingBackend} hidden>
 				Ping Backend
 			</button>
+			
+			{/* Leading Team Highlight */}
+			{leadingTeam && maxProgress > 0 && (
+				<div className="leader-highlight">
+					<div className="leader-badge">🏆</div>
+					<div className="leader-info">
+						<h3>Current Leader</h3>
+						<p className="leader-team">{leadingTeam.team}</p>
+						<p className="leader-progress">{leadingTeam.progress}/6 locations completed</p>
+					</div>
+				</div>
+			)}
+
 			<h2>Leaderboard</h2>
-			<table border="1">
-				<thead>
-					<tr>
-						<th>Rank</th>
-						<th>Team</th>
-						<th>Progress</th>
-						<th>Last Update</th>
-						<th>Status</th>
-					</tr>
-				</thead>
-				<tbody>
-					{leaderboard.map((row, idx) => (
-						<tr key={row.team}>
-							<td>{idx + 1}</td>
-							<td>{row.team}</td>
-							<td>{row.progress}/6</td>
-							<td>{row.lastTime ? new Date(row.lastTime).toLocaleTimeString() : "-"}</td>
-							<td>{row.status}</td>
+			<div className="table-container">
+				<table className="leaderboard-table">
+					<thead>
+						<tr>
+							<th>Rank</th>
+							<th>Team</th>
+							<th>Team ID</th>
+							<th>Progress</th>
+							<th>Last Update</th>
+							<th>Status</th>
 						</tr>
-					))}
-				</tbody>
-			</table>
+					</thead>
+					<tbody>
+						{leaderboard.length === 0 ? (
+							<tr>
+								<td colSpan="6" className="no-data">No teams on leaderboard yet</td>
+							</tr>
+						) : (
+							leaderboard.map((row, idx) => (
+								<tr key={row.team} className={idx === 0 ? "top-team" : ""}>
+									<td className="rank-cell">
+										{idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : idx + 1}
+									</td>
+									<td>{row.team}</td>
+									<td className="team-id-cell">{row.teamId || "N/A"}</td>
+									<td>
+										<div className="progress-container">
+											<span className="progress-text">{row.progress}/6</span>
+											<div className="progress-bar">
+												<div 
+													className="progress-fill" 
+													style={{ width: `${(row.progress / 6) * 100}%` }}
+												></div>
+											</div>
+										</div>
+									</td>
+									<td>{row.lastTime ? new Date(row.lastTime).toLocaleTimeString() : "-"}</td>
+									<td>
+										<span className={`status-badge ${row.status === "Finished" ? "finished" : "in-progress"}`}>
+											{row.status}
+										</span>
+									</td>
+								</tr>
+							))
+						)}
+					</tbody>
+				</table>
+			</div>
 
 			<h2>Activity Log</h2>
 			<table border="1">

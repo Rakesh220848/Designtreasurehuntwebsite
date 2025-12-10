@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "./Admin.css";
 
 const API_BASE = (
@@ -7,35 +8,50 @@ const API_BASE = (
 ).replace(/\/+$/, "");
 
 function Admin() {
+	const navigate = useNavigate();
 	const [teamName, setTeamName] = useState("");
 	const [member1, setMember1] = useState("");
 	const [member2, setMember2] = useState("");
 	const [member3, setMember3] = useState("");
 	const [member4, setMember4] = useState("");
+	const [isSubmitting, setIsSubmitting] = useState(false);
 
-	const rLocation = (event) => {
+	const rLocation = async (event) => {
 		event.preventDefault(); // Prevent form submission
 		const memberName = [member1, member2, member3, member4];
+		setIsSubmitting(true);
 
-		fetch(`${API_BASE}/save-locations`, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({
-				team: teamName,
-				members: memberName,
-			}),
-		})
-			.then(async (response) => {
-				const data = await response.json();
-				if (response.ok) {
-					alert(`Team ${teamName} created successfully.`);
-				} else {
-					alert(data.error || data.message || "Failed to create team.");
-				}
-				return data;
-			})
-			.then((data) => console.log("Server Response:", data))
-			.catch((error) => console.error("Error sending data:", error));
+		try {
+			const response = await fetch(`${API_BASE}/save-locations`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					team: teamName,
+					members: memberName,
+				}),
+			});
+
+			const data = await response.json();
+			
+			if (response.ok) {
+				// Navigate to confirmation page with team data
+				navigate("/team-confirmation", {
+					state: {
+						teamId: data.teamId,
+						teamName: teamName,
+						members: memberName.filter(m => m.trim() !== ""),
+						locations: data.locations,
+					},
+				});
+			} else {
+				alert(data.error || data.message || "Failed to create team.");
+				setIsSubmitting(false);
+			}
+		} catch (error) {
+			console.error("Error sending data:", error);
+			alert("An error occurred while creating the team.");
+			setIsSubmitting(false);
+		}
 	};
 
 	return (
@@ -86,8 +102,8 @@ function Admin() {
 						required
 					/>
 				</div>
-				<button type="submit" className="admin-button">
-					Generate and Save Locations
+				<button type="submit" className="admin-button" disabled={isSubmitting}>
+					<span>{isSubmitting ? "Creating Team..." : "Generate and Save Locations"}</span>
 				</button>
 			</form>
 		</div>
