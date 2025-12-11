@@ -43,21 +43,6 @@ const TeamConfirmation = () => {
 							))}
 						</div>
 					</div>
-					{locations && (
-						<div className="detail-section">
-							<label>Assigned Locations:</label>
-							<div className="locations-list">
-								{Object.entries(locations)
-									.filter(([key]) => key !== "team" && key !== "start" && key !== "end_location")
-									.map(([key, value]) => (
-										<div key={key} className="location-item">
-											<span className="location-label">{key}:</span>
-											<span className="location-value">{value}</span>
-										</div>
-									))}
-							</div>
-						</div>
-					)}
 				</div>
 				<div className="confirmation-actions">
 					<button className="primary-btn" onClick={() => navigate("/scan")}>

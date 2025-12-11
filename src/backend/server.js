@@ -541,6 +541,31 @@ app.post("/api/restrict-team", async (req, res) => {
 	}
 });
 
+// Get team locations for admin view
+app.get("/api/team-locations/:teamName", async (req, res) => {
+	const { teamName } = req.params;
+
+	if (!teamName) {
+		return res.status(400).json({ message: "Team name is required" });
+	}
+
+	try {
+		const { data: locations, error } = await supabase
+			.from("setlocation")
+			.select("location1, location2, location3, location4, location5, end_location")
+			.eq("team", teamName)
+			.single();
+
+		if (error || !locations) {
+			return res.status(404).json({ message: "Team locations not found" });
+		}
+
+		return res.json({ locations });
+	} catch (err) {
+		return res.status(500).json({ message: err.message });
+	}
+});
+
 // Start the server
 app.listen(PORT, () => {
 	console.log(`Server is running on http://localhost:${PORT}`);

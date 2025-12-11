@@ -13,6 +13,9 @@ const SuperAdmin = () => {
 	const [adminCode, setAdminCode] = useState("");
 	const [teams, setTeams] = useState([]);
 	const [teamIdToRestrict, setTeamIdToRestrict] = useState("");
+	const [expandedTeam, setExpandedTeam] = useState(null);
+	const [teamLocations, setTeamLocations] = useState({});
+	const [loadingLocations, setLoadingLocations] = useState(false);
 	const [systemHealth, setSystemHealth] = useState({
 		backend: "checking...",
 		frontend: "checking...",
@@ -58,6 +61,36 @@ const SuperAdmin = () => {
 			}
 		} catch (error) {
 			console.error("Error fetching teams:", error);
+		}
+	};
+
+	const fetchTeamLocations = async (teamName) => {
+		if (teamLocations[teamName]) {
+			return; // Already fetched
+		}
+		setLoadingLocations(true);
+		try {
+			const response = await fetch(`${API_BASE}/api/team-locations/${teamName}`);
+			if (response.ok) {
+				const data = await response.json();
+				setTeamLocations((prev) => ({
+					...prev,
+					[teamName]: data.locations || {},
+				}));
+			}
+		} catch (error) {
+			console.error("Error fetching team locations:", error);
+		} finally {
+			setLoadingLocations(false);
+		}
+	};
+
+	const toggleTeamExpand = async (teamName) => {
+		if (expandedTeam === teamName) {
+			setExpandedTeam(null);
+		} else {
+			setExpandedTeam(teamName);
+			await fetchTeamLocations(teamName);
 		}
 	};
 
@@ -242,6 +275,7 @@ const SuperAdmin = () => {
 						<table className="teams-table">
 							<thead>
 								<tr>
+									<th style={{ width: "30px" }}></th>
 									<th>Team Name</th>
 									<th>Team ID</th>
 									<th>Status</th>
@@ -251,38 +285,89 @@ const SuperAdmin = () => {
 							<tbody>
 								{teams.length === 0 ? (
 									<tr>
-										<td colSpan="4" className="no-teams">
+										<td colSpan="5" className="no-teams">
 											No teams found
 										</td>
 									</tr>
 								) : (
 									teams.map((team) => (
-										<tr key={team.team_id || team.team}>
-											<td>{team.team}</td>
-											<td className="team-id-cell">{team.team_id || "N/A"}</td>
-											<td>
-												<span
-													className={`status-badge ${
-														team.restricted ? "restricted" : "active"
-													}`}
-												>
-													{team.restricted ? "Disqualified" : "Active"}
-												</span>
-											</td>
-											<td>
-												<button
-													onClick={() =>
-														handleRestrictTeam(team.team_id || team.team, !team.restricted)
-													}
-													className={`action-btn ${
-														team.restricted ? "restore" : "restrict"
-													}`}
-													disabled={loading}
-												>
-													{team.restricted ? "Restore" : "Disqualify"}
-												</button>
-											</td>
-										</tr>
+										<React.Fragment key={team.team_id || team.team}>
+											<tr className="team-row">
+												<td className="expand-cell">
+													<button
+														className={`expand-btn ${
+															expandedTeam === team.team ? "expanded" : ""
+														}`}
+														onClick={() => toggleTeamExpand(team.team)}
+														aria-label="Toggle team details"
+													>
+														▶
+													</button>
+												</td>
+												<td>{team.team}</td>
+												<td className="team-id-cell">{team.team_id || "N/A"}</td>
+												<td>
+													<span
+														className={`status-badge ${
+															team.restricted ? "restricted" : "active"
+														}`}
+													>
+														{team.restricted ? "Disqualified" : "Active"}
+													</span>
+												</td>
+												<td>
+													<button
+														onClick={() =>
+															handleRestrictTeam(team.team_id || team.team, !team.restricted)
+														}
+														className={`action-btn ${
+															team.restricted ? "restore" : "restrict"
+														}`}
+														disabled={loading}
+													>
+														{team.restricted ? "Restore" : "Disqualify"}
+													</button>
+												</td>
+											</tr>
+											{expandedTeam === team.team && (
+												<tr className="expandable-row">
+													<td colSpan="5">
+														<div className="team-locations-container">
+															<h3>Assigned Locations</h3>
+															{loadingLocations ? (
+																<div className="loading-spinner">Loading...</div>
+															) : teamLocations[team.team] ? (
+																<div className="locations-flow">
+																	<div className="location-item start">
+																		<span className="location-label">START</span>
+																		<span className="location-code">CLG</span>
+																	</div>
+																	{[1, 2, 3, 4, 5].map((num) => {
+																		const locCode = teamLocations[team.team][`location${num}`];
+																		return (
+																			<React.Fragment key={`loc${num}`}>
+																				<span className="flow-arrow">→</span>
+																				<div className="location-item">
+																					<span className="location-label">LOC {num}</span>
+																					<span className="location-code">{locCode || "N/A"}</span>
+																				</div>
+																			</React.Fragment>
+																		);
+																	})}
+																	<span className="flow-arrow">→</span>
+																	<div className="location-item end">
+																		<span className="location-label">END</span>
+																		<span className="location-code">{teamLocations[team.team].end_location || "N/A"}</span>
+																	</div>
+																</div>
+															) : (
+																<div className="no-locations">No locations found</div>
+															)}
+														</div>
+													</td>
+												</tr>
+											)}
+										</React.Fragment>
 									))
 								)}
 							</tbody>
