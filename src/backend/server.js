@@ -252,12 +252,23 @@ async function getLocations() {
 		.select("location_code")
 		.neq("location_code", "CLG");
 
-	if (error || !data) {
-		throw new Error("Failed to fetch locations");
+	if (error) {
+		console.error("Supabase location fetch error:", {
+			message: error.message,
+			code: error.code,
+			details: error.details,
+		});
+		throw new Error(`Failed to fetch locations: ${error.message}`);
+	}
+
+	if (!data || data.length === 0) {
+		console.warn("No location data found in database");
+		throw new Error("No locations available in database");
 	}
 
 	locationsCache = data.map((loc) => loc.location_code);
 	locationsCacheTime = now;
+	console.log(`Cached ${locationsCache.length} locations:`, locationsCache);
 	return locationsCache;
 }
 
