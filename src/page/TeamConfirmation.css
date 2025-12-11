@@ -22,6 +22,18 @@
 	box-sizing: border-box;
 	position: relative;
 	overflow: hidden;
+	animation: slideUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes slideUp {
+	from {
+		opacity: 0;
+		transform: translateY(40px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
 }
 
 .confirmation-card::before {
@@ -96,12 +108,38 @@
 	background-color: rgba(0, 0, 0, 0.3);
 	border-radius: 15px;
 	border: 1px solid var(--mv-glass-border);
+	animation: fadeInUp 0.6s ease-out forwards;
+	opacity: 0;
+}
+
+.detail-section:nth-child(1) {
+	animation-delay: 0.2s;
+}
+
+.detail-section:nth-child(2) {
+	animation-delay: 0.3s;
+}
+
+.detail-section:nth-child(3) {
+	animation-delay: 0.4s;
+}
+
+@keyframes fadeInUp {
+	from {
+		opacity: 0;
+		transform: translateY(20px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
 }
 
 .detail-section.highlight {
 	background: linear-gradient(135deg, rgba(0, 217, 255, 0.2), rgba(255, 0, 110, 0.2));
 	border-color: var(--mv-primary);
 	box-shadow: 0 0 20px rgba(0, 217, 255, 0.3);
+	transform: scale(1.02);
 }
 
 .detail-section label {
@@ -182,6 +220,16 @@
 	justify-content: center;
 	margin-top: 40px;
 	flex-wrap: wrap;
+	animation: fadeIn 0.8s ease-out 0.3s both;
+}
+
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
 }
 
 .primary-btn,
@@ -194,86 +242,235 @@
 	text-transform: uppercase;
 	letter-spacing: 2px;
 	cursor: pointer;
-	transition: all 0.3s ease;
+	transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 	min-width: 200px;
+	position: relative;
+	overflow: hidden;
+}
+
+.primary-btn::before,
+.secondary-btn::before {
+	content: '';
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 0;
+	height: 0;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, 0.3);
+	transform: translate(-50%, -50%);
+	transition: width 0.6s, height 0.6s;
+	z-index: 0;
+}
+
+.primary-btn:hover::before,
+.secondary-btn:hover::before {
+	width: 300px;
+	height: 300px;
 }
 
 .primary-btn {
 	background: linear-gradient(135deg, var(--mv-primary), #00a8ff);
 	color: #000;
 	box-shadow: var(--mv-shadow-primary);
+	position: relative;
+	z-index: 1;
+}
+
+.primary-btn span,
+.secondary-btn span {
+	position: relative;
+	z-index: 1;
 }
 
 .primary-btn:hover {
-	transform: translateY(-2px);
+	transform: translateY(-3px) scale(1.02);
 	box-shadow: 0 0 30px rgba(0, 217, 255, 0.8);
-	filter: brightness(1.1);
+	filter: brightness(1.15);
 }
 
 .secondary-btn {
 	background: transparent;
 	border: 2px solid var(--mv-secondary);
 	color: var(--mv-secondary);
+	position: relative;
+	z-index: 1;
 }
 
 .secondary-btn:hover {
 	background: var(--mv-secondary);
 	color: #000;
 	box-shadow: var(--mv-shadow-secondary);
+	transform: translateY(-3px) scale(1.02);
 }
 
 /* Mobile Responsiveness */
 @media screen and (max-width: 768px) {
+	.confirmation-container {
+		padding: 10px;
+	}
+
 	.confirmation-card {
-		padding: 30px;
+		padding: 30px 20px;
+		border-radius: 20px;
 	}
 
 	.confirmation-title {
 		font-size: 1.8rem;
-		letter-spacing: 3px;
+		letter-spacing: 2px;
+		margin-bottom: 25px;
 	}
 
 	.success-icon {
-		width: 80px;
-		height: 80px;
-		font-size: 3rem;
+		width: 70px;
+		height: 70px;
+		font-size: 2.5rem;
+		margin-bottom: 20px;
+	}
+
+	.team-details {
+		text-align: left;
+		margin: 25px 0;
+	}
+
+	.detail-section {
+		margin-bottom: 20px;
+		padding: 15px;
+		border-radius: 12px;
+	}
+
+	.detail-section label {
+		font-size: 0.9rem;
+		margin-bottom: 8px;
+	}
+
+	.detail-value {
+		font-size: 1.2rem;
 	}
 
 	.team-id {
 		font-size: 1.5rem;
+		letter-spacing: 2px;
 	}
 
-	.locations-list {
-		grid-template-columns: repeat(2, 1fr);
+	.members-list {
+		gap: 8px;
+	}
+
+	.member-tag {
+		font-size: 0.85rem;
+		padding: 6px 12px;
 	}
 
 	.confirmation-actions {
 		flex-direction: column;
+		gap: 12px;
+		margin-top: 30px;
 	}
 
 	.primary-btn,
 	.secondary-btn {
 		width: 100%;
 		min-width: auto;
+		padding: 14px 20px;
+		font-size: 1rem;
+		letter-spacing: 1.5px;
 	}
 }
 
 @media screen and (max-width: 480px) {
+	.confirmation-container {
+		padding: 5px;
+	}
+
 	.confirmation-card {
-		padding: 20px;
+		padding: 25px 15px;
+		border-radius: 15px;
+		border-width: 1.5px;
 	}
 
 	.confirmation-title {
 		font-size: 1.5rem;
-		margin-bottom: 30px;
+		letter-spacing: 1.5px;
+		margin-bottom: 20px;
+	}
+
+	.success-icon {
+		width: 60px;
+		height: 60px;
+		font-size: 2rem;
+		margin-bottom: 15px;
+	}
+
+	.team-details {
+		margin: 20px 0;
 	}
 
 	.detail-section {
-		padding: 15px;
+		margin-bottom: 15px;
+		padding: 12px;
+		border-radius: 10px;
+	}
+
+	.detail-section label {
+		font-size: 0.8rem;
+		letter-spacing: 1px;
+		margin-bottom: 6px;
+	}
+
+	.detail-value {
+		font-size: 1rem;
+		word-break: break-word;
 	}
 
 	.team-id {
 		font-size: 1.2rem;
+		letter-spacing: 1.5px;
+	}
+
+	.members-list {
+		flex-wrap: wrap;
+		gap: 6px;
+	}
+
+	.member-tag {
+		font-size: 0.75rem;
+		padding: 5px 10px;
+	}
+
+	.confirmation-actions {
+		flex-direction: column;
+		gap: 10px;
+		margin-top: 25px;
+	}
+
+	.primary-btn,
+	.secondary-btn {
+		width: 100%;
+		min-width: auto;
+		padding: 12px 15px;
+		font-size: 0.95rem;
+		letter-spacing: 1px;
+	}
+}
+
+@media screen and (max-width: 360px) {
+	.confirmation-card {
+		padding: 20px 12px;
+	}
+
+	.confirmation-title {
+		font-size: 1.3rem;
+	}
+
+	.detail-section label {
+		font-size: 0.75rem;
+	}
+
+	.primary-btn,
+	.secondary-btn {
+		padding: 10px 12px;
+		font-size: 0.9rem;
 	}
 }
 

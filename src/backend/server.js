@@ -272,15 +272,12 @@ async function getLocations() {
 	return locationsCache;
 }
 
-// Helper function to generate unique Team_ID
+// Helper function to generate meaningful Team_ID
 function generateTeamId() {
-	const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-	let teamId = "";
-	for (let i = 0; i < 8; i++) {
-		teamId += chars.charAt(Math.floor(Math.random() * chars.length));
-	}
-	// Add timestamp component for uniqueness
-	return teamId + Date.now().toString(36).toUpperCase().slice(-4);
+	// Format: TR-XXXXXX (Treasure Run - Random 6 digits)
+	// This is more memorable and meaningful
+	const randomNum = Math.floor(100000 + Math.random() * 900000); // 6-digit random number
+	return `TR-${randomNum}`;
 }
 
 // Optimized route to save locations to setlocation table
