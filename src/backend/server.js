@@ -59,7 +59,7 @@ app.post("/check", async (req, res) => {
 		const { data: setlocationData, error: teamError } = await supabase
 			.from("setlocation")
 			.select(
-				"start, location1, location2, location3, location4, location5, end"
+				"start, location1, location2, location3, location4, location5, end_location"
 			)
 			.eq("team", teamNumber)
 			.single();
@@ -72,7 +72,7 @@ app.post("/check", async (req, res) => {
 		const { data: verifylocationData, error: verifyError } = await supabase
 			.from("verifylocation")
 			.select(
-				"start, location1, location2, location3, location4, location5, end, locked_device, locked_member, start_time, location1_time, location2_time, location3_time, location4_time, location5_time, restricted"
+				"start, location1, location2, location3, location4, location5, end_location, locked_device, locked_member, start_time, location1_time, location2_time, location3_time, location4_time, location5_time, restricted"
 			)
 			.eq("team", teamNumber)
 			.single();
@@ -310,7 +310,7 @@ app.post("/save-locations", async (req, res) => {
 			location3: uniqueLocations[2],
 			location4: uniqueLocations[3],
 			location5: uniqueLocations[4],
-			end: "CLG",
+			end_location: "CLG",
 		};
 
 		const teamData = {
@@ -331,7 +331,7 @@ app.post("/save-locations", async (req, res) => {
 			location3: null,
 			location4: null,
 			location5: null,
-			end: null,
+			end_location: null,
 			restricted: false,
 		};
 
@@ -344,20 +344,35 @@ app.post("/save-locations", async (req, res) => {
 
 		// Check for errors
 		if (teamResult.error) {
-			console.error("Error adding team:", teamResult.error.message);
-			return res.status(500).json({ error: "Failed to add team" });
+			console.error("Error adding team:", teamResult.error);
+			console.error("Error details:", {
+				message: teamResult.error.message,
+				code: teamResult.error.code,
+				details: teamResult.error.details,
+			});
+			return res.status(500).json({ error: "Failed to add team", details: teamResult.error.message });
 		}
 
 		if (locationResult.error) {
-			console.error("Error saving locations:", locationResult.error.message);
-			return res.status(500).json({ error: "Failed to save locations" });
+			console.error("Error saving locations:", locationResult.error);
+			console.error("Error details:", {
+				message: locationResult.error.message,
+				code: locationResult.error.code,
+				details: locationResult.error.details,
+			});
+			return res.status(500).json({ error: "Failed to save locations", details: locationResult.error.message });
 		}
 
 		if (verifyResult.error) {
-			console.error("Error initializing verification:", verifyResult.error.message);
+			console.error("Error initializing verification:", verifyResult.error);
+			console.error("Error details:", {
+				message: verifyResult.error.message,
+				code: verifyResult.error.code,
+				details: verifyResult.error.details,
+			});
 			return res
 				.status(500)
-				.json({ error: "Failed to initialize verification" });
+				.json({ error: "Failed to initialize verification", details: verifyResult.error.message });
 		}
 
 		// Return success response immediately
@@ -406,7 +421,7 @@ app.get("/api/leaderboard", async (req, res) => {
 		const { data, error } = await supabase
 			.from("verifylocation")
 			.select(
-				"team, team_id, start, location1, location2, location3, location4, location5, end, start_time, location1_time, location2_time, location3_time, location4_time, location5_time, restricted"
+				"team, team_id, start, location1, location2, location3, location4, location5, end_location, start_time, location1_time, location2_time, location3_time, location4_time, location5_time, restricted"
 			);
 
 		if (error) {

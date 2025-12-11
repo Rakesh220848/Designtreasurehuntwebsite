@@ -48,7 +48,7 @@ const TeamConfirmation = () => {
 							<label>Assigned Locations:</label>
 							<div className="locations-list">
 								{Object.entries(locations)
-									.filter(([key]) => key !== "team" && key !== "start" && key !== "end")
+									.filter(([key]) => key !== "team" && key !== "start" && key !== "end_location")
 									.map(([key, value]) => (
 										<div key={key} className="location-item">
 											<span className="location-label">{key}:</span>

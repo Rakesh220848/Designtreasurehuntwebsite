@@ -15,6 +15,8 @@ const Scan = () => {
 	const [nextLocationHint, setNextLocationHint] = useState(
 		localStorage.getItem("nextLocationHint") // Retrieve data from local storage
 	);
+	const [userLocation, setUserLocation] = useState(null);
+	const [locationError, setLocationError] = useState(null);
 	const [deviceId, setDeviceId] = useState(() => {
 		const existing = localStorage.getItem("deviceId");
 		if (existing) return existing;
@@ -28,6 +30,34 @@ const Scan = () => {
 	useEffect(() => {
 		localStorage.setItem("deviceId", deviceId);
 	}, [deviceId]);
+
+	// Geolocation Effect
+	useEffect(() => {
+		if (navigator.geolocation) {
+			const watchId = navigator.geolocation.watchPosition(
+				(position) => {
+					setUserLocation({
+						latitude: position.coords.latitude,
+						longitude: position.coords.longitude,
+						accuracy: position.coords.accuracy,
+					});
+					setLocationError(null);
+				},
+				(error) => {
+					setLocationError(error.message);
+					console.error("Geolocation error:", error);
+				},
+				{
+					enableHighAccuracy: true,
+					timeout: 10000,
+					maximumAge: 0,
+				}
+			);
+			return () => navigator.geolocation.clearWatch(watchId);
+		} else {
+			setLocationError("Geolocation not supported by your browser");
+		}
+	}, []);
 
 	const handleScanData = (data) => {
 		setScannedData(data);
@@ -54,6 +84,11 @@ const Scan = () => {
 			return;
 		}
 
+		if (!userLocation) {
+			alert("Unable to get your location. Please enable location services.");
+			return;
+		}
+
 		try {
 			const response = await fetch(`${API_BASE}/check`, {
 				method: "POST",
@@ -63,6 +98,8 @@ const Scan = () => {
 					teamNumber: teamNumber,
 					deviceId,
 					memberName,
+					latitude: userLocation.latitude,
+					longitude: userLocation.longitude,
 				}),
 			});
 			const result = await response.json();
@@ -74,11 +111,12 @@ const Scan = () => {
 
 					// Save the hint to local storage
 					localStorage.setItem("nextLocationHint", result.nextHint);
+					setScannedData("No result"); // Reset for next scan
 				} else {
-					alert("Wrong location! Please try again.");
+					alert(result.message || "Wrong location! Please try again.");
 				}
 			} else {
-				alert(result.message);
+				alert(result.message || "An error occurred");
 			}
 		} catch (error) {
 			console.error("Error sending data:", error);
@@ -127,9 +165,30 @@ const Scan = () => {
 					Submit
 				</button>
 			</form>
+			
+			{/* Location Status Display */}
+			<div style={{ marginTop: "20px", textAlign: "center", fontSize: "0.9rem", padding: "15px", background: "rgba(0,0,0,0.3)", borderRadius: "10px" }}>
+				{locationError ? (
+					<p style={{ color: "#ff4444", margin: "0" }}>
+						📍 Location Error: {locationError}
+					</p>
+				) : userLocation ? (
+					<div>
+						<p style={{ color: "#00d9ff", margin: "5px 0" }}>
+							✓ Location Active
+						</p>
+						<p style={{ fontSize: "0.8rem", color: "#aaa", margin: "5px 0" }}>
+							Accuracy: {Math.round(userLocation.accuracy)}m
+						</p>
+					</div>
+				) : (
+					<p style={{ color: "#ffaa00", margin: "0" }}>📍 Getting location...</p>
+				)}
+			</div>
+
 			{nextLocationHint === "Congo" ? (
 				<p>
-					Congratulations on finishing the Track Run event! Now, it’s time to
+					Congratulations on finishing the Track Run event! Now, it's time to
 					make your way back to the starting point and celebrate your
 					achievement! 🎉
 				</p>
